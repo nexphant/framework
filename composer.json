@@ -3,6 +3,11 @@
     "description": "Nexph Framework - Meta-package for all Nexph components",
     "type": "library",
     "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Nexph\\": "src/"
+        }
+    },
     "require": {
         "php": "^8.1",
         "nexph/core": "^0.1",
@@ -12,7 +17,8 @@
         "nexph/queue": "^0.1",
         "nexph/cache": "^0.1",
         "nexph/console": "^0.1",
-        "nexph/support": "^0.1"
+        "nexph/support": "^0.1",
+        "nexph/observability": "^0.1"
     },
     "minimum-stability": "dev",
     "prefer-stable": true
