@@ -52,9 +52,9 @@ class App
         return $this;
     }
 
-    public function serve(int $port = 8080): void
+    public function serve(int $port = 8080, string $host = '0.0.0.0'): void
     {
-        $this->app->listen($port);
+        $this->app->listen($port, $host);
     }
 
     public function queue(): mixed
