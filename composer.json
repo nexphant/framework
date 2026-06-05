@@ -6,7 +6,8 @@
     "autoload": {
         "psr-4": {
             "Nexph\\": "src/"
-        }
+        },
+        "files": ["src/legacy_aliases.php"]
     },
     "require": {
         "php": "^8.1",
