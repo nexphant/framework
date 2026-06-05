@@ -1,4 +1,4 @@
 <?php
 namespace Nexph;
 
-class Request extends \Nexph\Server\Request {}
+class Request extends \Nexph\Server\ServerRequest {}

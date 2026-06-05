@@ -5,7 +5,7 @@ namespace Nexph;
 use Nexph\Server\Attributes\Route;
 use Nexph\Server\Middleware\Cors;
 use Nexph\Server\Middleware\Security;
-use Nexph\Server\{HttpServer, Router, ServerRequest, ServerResponse, StaticFiles, AsyncIO, ServerTUI};
+use Nexph\Server\{HttpServer, Router, ServerRequest, ServerResponse, StaticFiles, AsyncIO, ServerTUI, Request as ServerRequestAlias, Response as ServerResponseAlias};
 use Nexph\Runtime\{OptimizeLoader, Runtime, RuntimeCache};
 use Nexph\Support\Config;
 use Nexph\Database\DB;
@@ -342,19 +342,23 @@ class Application
 
     private function wrap(callable $handler): callable
     {
-        return function (ServerRequest $request, ServerResponse $response, array $params = []) use ($handler) {
-            $result = $handler($request, $response, $params);
-            if ($result instanceof \Generator) {
-                return $result;
+        return function (ServerRequest $srvReq, ServerResponse $srvResp, array $params = []) use ($handler) {
+            try {
+                $result = $handler($srvReq, $srvResp, $params);
+                if ($result instanceof \Generator) {
+                    return $result;
+                }
+                if ($result instanceof ServerResponse || $result === null) {
+                    return;
+                }
+                if (is_array($result) || is_object($result)) {
+                    $srvResp->json($result);
+                    return;
+                }
+                $srvResp->text((string) $result);
+            } catch (\Throwable $e) {
+                throw $e;
             }
-            if ($result instanceof ServerResponse || $result === null) {
-                return;
-            }
-            if (is_array($result) || is_object($result)) {
-                $response->json($result);
-                return;
-            }
-            $response->text((string) $result);
         };
     }
 

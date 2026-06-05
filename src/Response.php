@@ -1,4 +1,4 @@
 <?php
 namespace Nexph;
 
-class Response extends \Nexph\Server\Response {}
+class Response extends \Nexph\Server\ServerResponse {}
