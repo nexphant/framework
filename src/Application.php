@@ -36,9 +36,9 @@ class Application
         $this->supervisor = $config['supervisor'] ?? ($this->workers > 1);
     }
 
-    public static function create(array $config = []): self
+    public static function create(array $config = []): static
     {
-        self::$instance = new self($config);
+        self::$instance = new static($config);
         return self::$instance;
     }
 
