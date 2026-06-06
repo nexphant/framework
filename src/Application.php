@@ -48,42 +48,43 @@ class Application
         return self::$instance ??= new self();
     }
 
-    public function get(string $path, callable $handler, callable ...$middleware): self
+    public function get(string $path, callable $handler, callable ...$middleware): \Nexph\Server\Route
     {
         return $this->add('GET', $path, $handler, $middleware);
     }
 
-    public function post(string $path, callable $handler, callable ...$middleware): self
+    public function post(string $path, callable $handler, callable ...$middleware): \Nexph\Server\Route
     {
         return $this->add('POST', $path, $handler, $middleware);
     }
 
-    public function put(string $path, callable $handler, callable ...$middleware): self
+    public function put(string $path, callable $handler, callable ...$middleware): \Nexph\Server\Route
     {
         return $this->add('PUT', $path, $handler, $middleware);
     }
 
-    public function patch(string $path, callable $handler, callable ...$middleware): self
+    public function patch(string $path, callable $handler, callable ...$middleware): \Nexph\Server\Route
     {
         return $this->add('PATCH', $path, $handler, $middleware);
     }
 
-    public function delete(string $path, callable $handler, callable ...$middleware): self
+    public function delete(string $path, callable $handler, callable ...$middleware): \Nexph\Server\Route
     {
         return $this->add('DELETE', $path, $handler, $middleware);
     }
 
-    public function options(string $path, callable $handler, callable ...$middleware): self
+    public function options(string $path, callable $handler, callable ...$middleware): \Nexph\Server\Route
     {
         return $this->add('OPTIONS', $path, $handler, $middleware);
     }
 
-    public function any(string $path, callable $handler, callable ...$middleware): self
+    public function any(string $path, callable $handler, callable ...$middleware): \Nexph\Server\Route
     {
+        $last = null;
         foreach (['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] as $method) {
-            $this->add($method, $path, $handler, $middleware);
+            $last = $this->add($method, $path, $handler, $middleware);
         }
-        return $this;
+        return $last;
     }
 
     public function group(string $prefix, callable $callback, callable ...$middleware): self
@@ -330,15 +331,14 @@ class Application
         }
     }
 
-    private function add(string $method, string $path, callable $handler, array $middleware = []): self
+    private function add(string $method, string $path, callable $handler, array $middleware = []): \Nexph\Server\Route
     {
-        $this->router->add(
+        return $this->router->add(
             $method,
             $this->joinPath($this->prefix, $path),
             $this->wrap($handler),
             array_merge($this->routeMiddleware, $middleware)
         );
-        return $this;
     }
 
     private function wrap(callable $handler): callable
@@ -348,6 +348,10 @@ class Application
                 $result = $handler($srvReq, $srvResp, $params);
                 if ($result instanceof \Generator) {
                     return $result;
+                }
+                if ($result instanceof \Nexph\Server\RawResponse) {
+                    $srvResp->rawHttp($result->http);
+                    return;
                 }
                 if ($result instanceof ServerResponse || $result === null) {
                     return;
