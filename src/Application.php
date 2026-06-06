@@ -28,6 +28,7 @@ class Application
 
     public function __construct(array $config = [], ?Router $router = null, ?HttpServer $server = null)
     {
+        \Nexph\Support\RuntimeConfig::apply($config);
         $this->basePath = $config['base_path'] ?? getcwd();
         $this->router = $router ?? new Router();
         $this->server = $server ?? new HttpServer($this->normalizeConfig($config));
