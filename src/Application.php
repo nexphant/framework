@@ -382,7 +382,12 @@ class Application
             return;
         }
         $this->requestHandlerRegistered = true;
-        $this->server->onRequest(fn(ServerRequest $request, ServerResponse $response) => $this->router->dispatch($request, $response));
+        $performanceMode = $this->server->getConfig()['performance_mode'] ?? false;
+        if ($performanceMode) {
+            $this->server->onRequest(fn(ServerRequest $request, ServerResponse $response) => $this->router->dispatchSync($request, $response));
+        } else {
+            $this->server->onRequest(fn(ServerRequest $request, ServerResponse $response) => $this->router->dispatch($request, $response));
+        }
     }
 
     private function databaseHealth(): array
