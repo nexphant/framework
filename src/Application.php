@@ -13,7 +13,7 @@ use Nexph\Database\DB;
 class Application
 {
     private static ?self $instance = null;
-    private HttpServer $server;
+    private ?HttpServer $server = null;
     private Router $router;
     private string $prefix = '';
     private array $routeMiddleware = [];
@@ -26,6 +26,7 @@ class Application
     private bool $autoWorkers = true;
     private static array $annotationRoutes = [];
     private \Nexph\Runtime\Config\RuntimeConfig $runtimeConfig;
+    private array $initialConfig = [];
 
     public function __construct(array $config = [], ?Router $router = null, ?HttpServer $server = null)
     {
@@ -33,7 +34,8 @@ class Application
         $this->basePath = $config['base_path'] ?? getcwd();
         $this->runtimeConfig = \Nexph\Runtime\Config\RuntimeConfigResolver::resolve($config);
         $this->router = $router ?? new Router();
-        $this->server = $server ?? new HttpServer($this->normalizeConfig($config));
+        $this->server = $server;
+        $this->initialConfig = $config;
         $this->autoWorkers = !isset($config['workers']);
         $this->workers = $this->runtimeConfig->get('workers', $this->detectCpuCount());
         $this->supervisor = $config['supervisor'] ?? ($this->workers > 1);
@@ -91,7 +93,7 @@ class Application
 
     public function group(string $prefix, callable $callback, callable ...$middleware): self
     {
-        $group = new self(['base_path' => $this->basePath], $this->router, $this->server);
+        $group = new self(['base_path' => $this->basePath], $this->router, $this->getServer());
         $group->prefix = $this->joinPath($this->prefix, $prefix);
         $group->routeMiddleware = array_merge($this->routeMiddleware, $middleware);
         $callback($group);
@@ -100,7 +102,7 @@ class Application
 
     public function use(callable $middleware): self
     {
-        $this->server->use($middleware);
+        $this->getServer()->use($middleware);
         return $this;
     }
 
@@ -111,21 +113,21 @@ class Application
 
     public function ws(string $path, callable $onMessage, ?callable $onOpen = null, ?callable $onClose = null): self
     {
-        $this->server->onWebSocket($this->joinPath($this->prefix, $path), $onMessage, $onOpen, $onClose);
+        $this->getServer()->onWebSocket($this->joinPath($this->prefix, $path), $onMessage, $onOpen, $onClose);
         return $this;
     }
 
     public function sse(string $path = '/events'): self
     {
         $this->get($path, function (ServerRequest $request, ServerResponse $response) {
-            $this->server->startSse($request, $response, $request->getConnection());
+            $this->getServer()->startSse($request, $response, $request->getConnection());
         });
         return $this;
     }
 
     public function broadcastSse(string $path, mixed $data, ?string $event = 'message', string $channel = 'global'): int
     {
-        return $this->server->broadcastSse($path, $data, $event, true, $channel);
+        return $this->getServer()->broadcastSse($path, $data, $event, true, $channel);
     }
 
     public function runtime(string $prefix = '/api'): self
@@ -143,13 +145,13 @@ class Application
         $this->get($prefix . '/health', fn() => [
             'status' => 'ok',
             'timestamp' => date('c'),
-            'stats' => $this->server->getStats(),
+            'stats' => $this->getServer()->getStats(),
             'database' => $this->databaseStats(),
         ]);
         $this->get($prefix . '/metrics', function (ServerRequest $request, ServerResponse $response) {
             return $response
                 ->header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
-                ->body($this->server->getMetricsText() . $this->databaseMetricsText());
+                ->body($this->getServer()->getMetricsText() . $this->databaseMetricsText());
         });
         return $this;
     }
@@ -245,7 +247,17 @@ class Application
     public function listen(int $port = 8080, string $host = '0.0.0.0'): void
     {
         $this->boot();
-        $this->server->setAddress($host, $port);
+        
+        $finalConfig = array_merge($this->normalizeConfig($this->initialConfig), $this->runtimeConfig->all());
+        $finalConfig['host'] = $host;
+        $finalConfig['port'] = $port;
+        
+        if ($this->server === null) {
+            $this->server = new HttpServer($finalConfig);
+        } else {
+            $this->server->setAddress($host, $port);
+        }
+        
         $this->registerNotFound();
         $this->registerRequestHandler();
 
@@ -259,6 +271,9 @@ class Application
 
     public function getServer(): HttpServer
     {
+        if ($this->server === null) {
+            $this->server = new HttpServer($this->normalizeConfig($this->initialConfig));
+        }
         return $this->server;
     }
 
@@ -273,7 +288,7 @@ class Application
             return;
         }
         $this->booted = true;
-        Runtime::configure($this->server->getConfig());
+        Runtime::configure($this->getServer()->getConfig());
 
         OptimizeLoader::warmup([
             HttpServer::class,
@@ -285,7 +300,7 @@ class Application
             Config::class,
         ]);
 
-        AsyncIO::setLoop($this->server->getLoop());
+        AsyncIO::setLoop($this->getServer()->getLoop());
 
         $envFile = $this->basePath . '/.env';
         $configFile = $this->basePath . '/config/app.php';
@@ -297,7 +312,7 @@ class Application
         }
 
         if (class_exists(AsyncDatabase::class)) {
-            AsyncDatabase::setLoop($this->server->getLoop());
+            AsyncDatabase::setLoop($this->getServer()->getLoop());
             if ($dbConfig = Config::get('db')) {
                 AsyncDatabase::connect($dbConfig);
             }
@@ -319,8 +334,8 @@ class Application
             }
             if ($pid === 0) {
                 \Nexph\Database\DB::reconnect();
-                $this->server->setWorkerInfo($workerId, $workers);
-                $this->server->start();
+                $this->getServer()->setWorkerInfo($workerId, $workers);
+                $this->getServer()->start();
                 exit(0);
             }
             $children[$pid] = $workerId;
@@ -576,12 +591,12 @@ class Application
     }
 
     public function fastJson(string $method, string $path, array|string $payload, int $status = 200, array $headers = []): self {
-        $this->server->fastJson($method, $this->joinPath($this->prefix, $path), $payload, $status, $headers);
+        $this->getServer()->fastJson($method, $this->joinPath($this->prefix, $path), $payload, $status, $headers);
         return $this;
     }
 
     public function fastText(string $method, string $path, string $body, int $status = 200, array $headers = []): self {
-        $this->server->fastText($method, $this->joinPath($this->prefix, $path), $body, $status, $headers);
+        $this->getServer()->fastText($method, $this->joinPath($this->prefix, $path), $body, $status, $headers);
         return $this;
     }
 
