@@ -535,4 +535,19 @@ class Application
         $joined = rtrim($prefix, '/') . $path;
         return $joined === '' ? '/' : $joined;
     }
+
+    public function fastJson(string $method, string $path, array|string $payload, int $status = 200, array $headers = []): self {
+        $this->server->fastJson($method, $this->joinPath($this->prefix, $path), $payload, $status, $headers);
+        return $this;
+    }
+
+    public function fastText(string $method, string $path, string $body, int $status = 200, array $headers = []): self {
+        $this->server->fastText($method, $this->joinPath($this->prefix, $path), $body, $status, $headers);
+        return $this;
+    }
+
+    public function fastRaw(string $method, string $path, string $rawResponse): self {
+        $this->server->fastRaw($method, $this->joinPath($this->prefix, $path), $rawResponse);
+        return $this;
+    }
 }
