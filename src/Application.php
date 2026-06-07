@@ -25,15 +25,17 @@ class Application
     private bool $supervisor = false;
     private bool $autoWorkers = true;
     private static array $annotationRoutes = [];
+    private \Nexph\Runtime\Config\RuntimeConfig $runtimeConfig;
 
     public function __construct(array $config = [], ?Router $router = null, ?HttpServer $server = null)
     {
         \Nexph\Support\RuntimeConfig::apply($config);
         $this->basePath = $config['base_path'] ?? getcwd();
+        $this->runtimeConfig = \Nexph\Runtime\Config\RuntimeConfigResolver::resolve($config);
         $this->router = $router ?? new Router();
         $this->server = $server ?? new HttpServer($this->normalizeConfig($config));
         $this->autoWorkers = !isset($config['workers']);
-        $this->workers = $config['workers'] ?? $this->detectCpuCount();
+        $this->workers = $this->runtimeConfig->get('workers', $this->detectCpuCount());
         $this->supervisor = $config['supervisor'] ?? ($this->workers > 1);
     }
 
@@ -200,6 +202,37 @@ class Application
         $this->workers = max(1, $count);
         $this->autoWorkers = false;
         $this->supervisor = $this->workers > 1;
+        $this->runtimeConfig->set('workers', $this->workers);
+        return $this;
+    }
+
+    public function runtimeMode(string $mode): self
+    {
+        $this->runtimeConfig->set('runtime_mode', $mode);
+        return $this;
+    }
+
+    public function maxAcceptPerTick(int $max): self
+    {
+        $this->runtimeConfig->set('max_accept_per_tick', $max);
+        return $this;
+    }
+
+    public function eventLoop(string $backend): self
+    {
+        $this->runtimeConfig->set('event_loop', $backend);
+        return $this;
+    }
+
+    public function socketDriver(string $driver): self
+    {
+        $this->runtimeConfig->set('socket_driver', $driver);
+        return $this;
+    }
+
+    public function tune(array $config): self
+    {
+        $this->runtimeConfig->merge($config);
         return $this;
     }
 
@@ -442,7 +475,7 @@ class Application
     {
         $fdLimit = $this->detectFileDescriptorLimit();
         $cpuCount = $this->detectCpuCount();
-        $workers = $config['workers'] ?? $cpuCount;
+        $workers = $this->runtimeConfig->get('workers', $cpuCount);
         $maxConnections = $config['max_connections'] ?? $this->autoMaxConnections($fdLimit, $workers);
         $backlog = $config['backlog'] ?? $this->autoBacklog($maxConnections, $workers);
 
@@ -468,6 +501,12 @@ class Application
             'websocket_bus_max_bytes' => 8 * 1024 * 1024,
             'websocket_broadcast_batch_size' => 250,
             'websocket_backpressure_policy' => 'close',
+            'max_accept_per_tick' => $this->runtimeConfig->get('max_accept_per_tick', 16),
+            'max_read_callbacks_per_tick' => $this->runtimeConfig->get('max_read_callbacks_per_tick', 512),
+            'max_write_callbacks_per_tick' => $this->runtimeConfig->get('max_write_callbacks_per_tick', 512),
+            'max_deferred_per_tick' => $this->runtimeConfig->get('max_deferred_per_tick', 512),
+            'socket_driver' => $this->runtimeConfig->get('socket_driver', 'stream'),
+            'event_loop' => $this->runtimeConfig->get('event_loop', 'auto'),
             'websocket_backpressure_soft_limit' => 524288,
             'websocket_max_frame_size' => 1048576,
             'websocket_max_read_buffer_size' => 2097152,
