@@ -36,6 +36,12 @@ class Application
         $this->router = $router ?? new Router();
         $this->server = $server;
         $this->initialConfig = $config;
+        if (isset($config['query_cache_ttl'])) {
+            DB::cache((float) $config['query_cache_ttl']);
+        }
+        if (isset($config['query_coalesce'])) {
+            DB::coalesce((bool) $config['query_coalesce']);
+        }
         $this->autoWorkers = !isset($config['workers']);
         $this->workers = $this->runtimeConfig->get('workers', $this->detectCpuCount());
         $this->supervisor = $config['supervisor'] ?? ($this->workers > 1);
