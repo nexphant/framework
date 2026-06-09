@@ -381,12 +381,39 @@ class Application
 
     private function add(string $method, string $path, callable $handler, array $middleware = []): \Nexph\Server\Route
     {
+        $fullPath = $this->joinPath($this->prefix, $path);
+        $this->tryRegisterStaticFastResponse($method, $fullPath, $handler, $middleware);
+
         return $this->router->add(
             $method,
-            $this->joinPath($this->prefix, $path),
+            $fullPath,
             $this->wrap($handler),
             array_merge($this->routeMiddleware, $middleware)
         );
+    }
+
+    private function tryRegisterStaticFastResponse(string $method, string $path, callable $handler, array $middleware): void
+    {
+        if ($method !== 'GET' || $middleware !== [] || $this->routeMiddleware !== [] || str_contains($path, '{')) {
+            return;
+        }
+
+        try {
+            $ref = is_array($handler)
+                ? new \ReflectionMethod($handler[0], $handler[1])
+                : new \ReflectionFunction(\Closure::fromCallable($handler));
+            if ($ref->getNumberOfParameters() !== 0) {
+                return;
+            }
+
+            $result = $handler();
+            if (is_array($result) || is_object($result)) {
+                $this->getServer()->fastJson($method, $path, $result);
+            } elseif (is_string($result) || is_int($result) || is_float($result) || is_bool($result)) {
+                $this->getServer()->fastText($method, $path, (string) $result);
+            }
+        } catch (\Throwable) {
+        }
     }
 
     private function wrap(callable $handler): callable
