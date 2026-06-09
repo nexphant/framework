@@ -457,8 +457,8 @@ class Application
             return;
         }
         $this->requestHandlerRegistered = true;
-        $performanceMode = $this->server->getConfig()['performance_mode'] ?? false;
-        if ($performanceMode) {
+        $runtimeSafety = $this->server->getConfig()['runtime_safety'] ?? !($this->server->getConfig()['performance_mode'] ?? false);
+        if (!$runtimeSafety) {
             $this->server->onRequest(fn(ServerRequest $request, ServerResponse $response) => $this->router->dispatchSync($request, $response));
         } else {
             $this->server->onRequest(fn(ServerRequest $request, ServerResponse $response) => $this->router->dispatch($request, $response));
@@ -531,6 +531,7 @@ class Application
             'max_deferred' => 100000,
             'max_requests' => $this->runtimeConfig->get('keep_alive_max_requests', 500),
             'max_write_buffer_size' => 1024 * 1024,
+            'runtime_safety' => true,
             'object_tracking' => false,
             'pool_safety' => false,
             'memory_pressure_threshold' => 0.85,
