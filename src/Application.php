@@ -235,6 +235,10 @@ class Application
     public function tune(array $config): self
     {
         $this->runtimeConfig->merge($config);
+        if (isset($config['workers'])) {
+            $this->workers = max(1, (int) $config['workers']);
+            $this->supervisor = $this->workers > 1;
+        }
         return $this;
     }
 
@@ -255,7 +259,7 @@ class Application
         if ($this->server === null) {
             $this->server = new HttpServer($finalConfig);
         } else {
-            $this->server->setAddress($host, $port);
+            $this->server->configure($finalConfig);
         }
         
         $this->registerNotFound();
