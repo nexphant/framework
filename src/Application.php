@@ -261,6 +261,7 @@ class Application
         $finalConfig = array_merge($this->normalizeConfig($this->initialConfig), $this->runtimeConfig->all());
         $finalConfig['host'] = $host;
         $finalConfig['port'] = $port;
+        $finalConfig['direct_fast_loop'] ??= !$finalConfig['runtime_safety'] && count($this->router->getRoutes()) === 0;
         
         if ($this->server === null) {
             $this->server = new HttpServer($finalConfig);
