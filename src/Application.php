@@ -261,7 +261,12 @@ class Application
         $finalConfig = array_merge($this->normalizeConfig($this->initialConfig), $this->runtimeConfig->all());
         $finalConfig['host'] = $host;
         $finalConfig['port'] = $port;
-        $finalConfig['direct_fast_loop'] ??= !$finalConfig['runtime_safety'] && count($this->router->getRoutes()) === 0;
+        $runtimeSafety = (bool) ($finalConfig['runtime_safety'] ?? !($finalConfig['performance_mode'] ?? false));
+        if (isset($finalConfig['runtime_discipline'])) {
+            $runtimeSafety = (bool) $finalConfig['runtime_discipline'];
+        }
+        $finalConfig['runtime_safety'] = $runtimeSafety;
+        $finalConfig['direct_fast_loop'] ??= !$runtimeSafety && count($this->router->getRoutes()) === 0;
         
         if ($this->server === null) {
             $this->server = new HttpServer($finalConfig);
@@ -468,7 +473,11 @@ class Application
             return;
         }
         $this->requestHandlerRegistered = true;
-        $runtimeSafety = $this->server->getConfig()['runtime_safety'] ?? !($this->server->getConfig()['performance_mode'] ?? false);
+        $config = $this->server->getConfig();
+        $runtimeSafety = $config['runtime_safety'] ?? !($config['performance_mode'] ?? false);
+        if (isset($config['runtime_discipline'])) {
+            $runtimeSafety = (bool) $config['runtime_discipline'];
+        }
         if (!$runtimeSafety) {
             $this->server->onRequest(fn(ServerRequest $request, ServerResponse $response) => $this->router->dispatchSync($request, $response));
         } else {
