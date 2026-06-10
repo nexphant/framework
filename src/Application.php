@@ -32,6 +32,12 @@ class Application
     {
         \Nexph\Support\RuntimeConfig::apply($config);
         $this->basePath = $config['base_path'] ?? getcwd();
+        if (!defined('NEXPH_BASE_PATH')) {
+            define('NEXPH_BASE_PATH', $this->basePath);
+        }
+        if (!defined('NEXPH_VIEW_PATH') && isset($config['view_path'])) {
+            define('NEXPH_VIEW_PATH', $config['view_path']);
+        }
         $this->runtimeConfig = \Nexph\Runtime\Config\RuntimeConfigResolver::resolve($config);
         $this->router = $router ?? new Router();
         $this->server = $server;
@@ -465,6 +471,10 @@ class Application
                 $result = $handler($srvReq, $srvResp, $params);
                 if ($result instanceof \Generator) {
                     return $result;
+                }
+                if ($result instanceof \Nexph\View\ViewResponse) {
+                    $srvResp->html($result->render());
+                    return;
                 }
                 if ($result instanceof \Nexph\Server\RawResponse) {
                     $srvResp->rawHttp($result->http);
