@@ -6,7 +6,7 @@ use Nexph\Server\Attributes\Route;
 use Nexph\Server\Middleware\Cors;
 use Nexph\Server\Middleware\Security;
 use Nexph\Server\{HttpServer, Router, ServerRequest, ServerResponse, StaticFiles, AsyncIO, ServerTUI, Request as ServerRequestAlias, Response as ServerResponseAlias};
-use Nexph\Runtime\{AutoOptimize, OptimizeLoader, Runtime, RuntimeCache};
+use Nexph\Runtime\{AutoOptimize, CompiledHotPath, OptimizeLoader, Runtime, RuntimeCache};
 use Nexph\Support\Config;
 use Nexph\Database\DB;
 
@@ -328,7 +328,8 @@ class Application
         }
 
         if (($this->initialConfig['auto_optimize'] ?? true) !== false) {
-            (new AutoOptimize($this->basePath . '/storage'))->boot($this->optimizeSourceFiles());
+            (new AutoOptimize($this->basePath . '/storage', $this->basePath))->boot();
+            $this->applyCompiledHotPath();
         }
 
         if (class_exists(AsyncDatabase::class)) {
@@ -339,16 +340,29 @@ class Application
         }
     }
 
-    private function optimizeSourceFiles(): array
+    private function applyCompiledHotPath(): void
     {
-        $files = [];
-        foreach (['app.php', 'test.php', 'config/app.php', 'routes/web.php', 'routes/api.php'] as $file) {
-            $path = $this->basePath . '/' . $file;
-            if (is_file($path)) {
-                $files[] = $path;
-            }
+        $compiled = CompiledHotPath::routes();
+        if (!is_array($compiled) || empty($compiled['fast'])) {
+            return;
         }
-        return $files;
+
+        $script = realpath((string) ($_SERVER['SCRIPT_FILENAME'] ?? '')) ?: '';
+        foreach ($compiled['fast'] as $route) {
+            if ($script !== '' && isset($route['file']) && realpath((string) $route['file']) !== $script) {
+                continue;
+            }
+            $method = (string) ($route['method'] ?? 'GET');
+            $path = (string) ($route['path'] ?? '/');
+            $status = (int) ($route['status'] ?? 200);
+            $payload = $route['payload_value'] ?? null;
+            match ($route['type'] ?? 'json') {
+                'json' => $this->getServer()->fastJson($method, $path, is_array($payload) || is_string($payload) ? $payload : (string) ($route['payload'] ?? ''), $status),
+                'text' => $this->getServer()->fastText($method, $path, is_scalar($payload) ? (string) $payload : (string) ($route['payload'] ?? ''), $status),
+                'raw' => $this->getServer()->fastRaw($method, $path, is_scalar($payload) ? (string) $payload : (string) ($route['payload'] ?? '')),
+                default => null,
+            };
+        }
     }
 
     private function runWithSupervisor(string $host, int $port): void
