@@ -414,7 +414,6 @@ class Application
     private function add(string $method, string $path, callable $handler, array $middleware = []): \Nexph\Server\Route
     {
         $fullPath = $this->joinPath($this->prefix, $path);
-        $this->tryRegisterStaticFastResponse($method, $fullPath, $handler, $middleware);
 
         return $this->router->add(
             $method,
@@ -424,27 +423,24 @@ class Application
         );
     }
 
-    private function tryRegisterStaticFastResponse(string $method, string $path, callable $handler, array $middleware): void
+    private function tryRegisterStaticFastResponse(string $method, string $path, mixed $payload, int $status = 200, array $headers = [], string $type = 'json'): void
     {
-        if ($method !== 'GET' || $middleware !== [] || $this->routeMiddleware !== [] || str_contains($path, '{')) {
+        if (str_contains($path, '{')) {
             return;
         }
 
-        try {
-            $ref = is_array($handler)
-                ? new \ReflectionMethod($handler[0], $handler[1])
-                : new \ReflectionFunction(\Closure::fromCallable($handler));
-            if ($ref->getNumberOfParameters() !== 0) {
-                return;
-            }
+        if ($type === 'json') {
+            $this->getServer()->fastJson($method, $path, is_string($payload) ? $payload : (array) $payload, $status, $headers);
+            return;
+        }
 
-            $result = $handler();
-            if (is_array($result) || is_object($result)) {
-                $this->getServer()->fastJson($method, $path, $result);
-            } elseif (is_string($result) || is_int($result) || is_float($result) || is_bool($result)) {
-                $this->getServer()->fastText($method, $path, (string) $result);
-            }
-        } catch (\Throwable) {
+        if ($type === 'text') {
+            $this->getServer()->fastText($method, $path, (string) $payload, $status, $headers);
+            return;
+        }
+
+        if ($type === 'raw') {
+            $this->getServer()->fastRaw($method, $path, (string) $payload);
         }
     }
 
@@ -655,17 +651,17 @@ class Application
     }
 
     public function fastJson(string $method, string $path, array|string $payload, int $status = 200, array $headers = []): self {
-        $this->getServer()->fastJson($method, $this->joinPath($this->prefix, $path), $payload, $status, $headers);
+        $this->tryRegisterStaticFastResponse($method, $this->joinPath($this->prefix, $path), $payload, $status, $headers, 'json');
         return $this;
     }
 
     public function fastText(string $method, string $path, string $body, int $status = 200, array $headers = []): self {
-        $this->getServer()->fastText($method, $this->joinPath($this->prefix, $path), $body, $status, $headers);
+        $this->tryRegisterStaticFastResponse($method, $this->joinPath($this->prefix, $path), $body, $status, $headers, 'text');
         return $this;
     }
 
     public function fastRaw(string $method, string $path, string $rawResponse): self {
-        $this->server->fastRaw($method, $this->joinPath($this->prefix, $path), $rawResponse);
+        $this->tryRegisterStaticFastResponse($method, $this->joinPath($this->prefix, $path), $rawResponse, 200, [], 'raw');
         return $this;
     }
 }
