@@ -6,7 +6,7 @@ use Nexph\Server\Attributes\Route;
 use Nexph\Server\Middleware\Cors;
 use Nexph\Server\Middleware\Security;
 use Nexph\Server\{HttpServer, Router, ServerRequest, ServerResponse, StaticFiles, AsyncIO, ServerTUI, Request as ServerRequestAlias, Response as ServerResponseAlias};
-use Nexph\Runtime\{OptimizeLoader, Runtime, RuntimeCache};
+use Nexph\Runtime\{AutoOptimize, OptimizeLoader, Runtime, RuntimeCache};
 use Nexph\Support\Config;
 use Nexph\Database\DB;
 
@@ -327,12 +327,28 @@ class Application
             Config::load($configFile);
         }
 
+        if (($this->initialConfig['auto_optimize'] ?? true) !== false) {
+            (new AutoOptimize($this->basePath . '/storage'))->boot($this->optimizeSourceFiles());
+        }
+
         if (class_exists(AsyncDatabase::class)) {
             AsyncDatabase::setLoop($this->getServer()->getLoop());
             if ($dbConfig = Config::get('db')) {
                 AsyncDatabase::connect($dbConfig);
             }
         }
+    }
+
+    private function optimizeSourceFiles(): array
+    {
+        $files = [];
+        foreach (['app.php', 'test.php', 'config/app.php', 'routes/web.php', 'routes/api.php'] as $file) {
+            $path = $this->basePath . '/' . $file;
+            if (is_file($path)) {
+                $files[] = $path;
+            }
+        }
+        return $files;
     }
 
     private function runWithSupervisor(string $host, int $port): void
