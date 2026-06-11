@@ -278,6 +278,10 @@ class Application
         }
         $finalConfig['runtime_safety'] = $runtimeSafety;
         $finalConfig['direct_fast_loop'] ??= !$runtimeSafety && count($this->router->getRoutes()) === 0;
+        $finalConfig['runtime_features'] = array_merge($finalConfig['runtime_features'] ?? [], [
+            'stats_file_writes' => true,
+            'metrics' => true,
+        ]);
         
         if ($this->server === null) {
             $this->server = new HttpServer($finalConfig);
@@ -293,6 +297,7 @@ class Application
             return;
         }
 
+        $this->writeRuntimePidFile($host, $port, getmypid(), []);
         $this->server->start();
     }
 
@@ -402,6 +407,8 @@ class Application
             $spawn($i);
         }
 
+        $this->writeRuntimePidFile($host, $port, getmypid(), array_keys($children));
+
         pcntl_async_signals(true);
         $shutdown = function () use (&$stopping, &$deadline, &$children, $gracefulTimeout): void {
             $stopping = true;
@@ -412,6 +419,11 @@ class Application
         };
         pcntl_signal(SIGTERM, $shutdown);
         pcntl_signal(SIGINT, $shutdown);
+        if (defined('SIGHUP')) {
+            pcntl_signal(SIGHUP, function () use ($host, $port, &$children): void {
+                $this->writeRuntimePidFile($host, $port, getmypid(), array_keys($children));
+            });
+        }
 
         ServerTUI::setMainProcess(true);
         ServerTUI::supervisorStarted($workers);
@@ -434,6 +446,36 @@ class Application
 
             usleep(100000);
         }
+
+        $this->removeRuntimePidFile();
+    }
+
+    private function writeRuntimePidFile(string $host, int $port, int $pid, array $children): void
+    {
+        $storage = $this->basePath . '/storage';
+        if (!is_dir($storage)) {
+            @mkdir($storage, 0775, true);
+        }
+
+        @file_put_contents($storage . '/runtime.pid', (string) $pid);
+        @file_put_contents($storage . '/runtime.json', json_encode([
+            'pid' => $pid,
+            'children' => array_values($children),
+            'host' => $host,
+            'port' => $port,
+            'workers' => $this->workers,
+            'started_at' => time(),
+            'stats_dir' => sys_get_temp_dir() . '/nexph-http-' . $port,
+            'cwd' => getcwd(),
+            'php_binary' => PHP_BINARY,
+            'command' => $_SERVER['argv'] ?? [],
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+    }
+
+    private function removeRuntimePidFile(): void
+    {
+        @unlink($this->basePath . '/storage/runtime.pid');
+        @unlink($this->basePath . '/storage/runtime.json');
     }
 
     private function add(string $method, string $path, callable $handler, array $middleware = []): \Nexph\Server\Route
