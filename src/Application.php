@@ -169,8 +169,15 @@ class Application
         return $this;
     }
 
-    public function annotations(string|object $controller): self
+    public function annotations(string|object|array $controller): self
     {
+        if (is_array($controller)) {
+            foreach ($controller as $item) {
+                $this->annotations($item);
+            }
+            return $this;
+        }
+
         $object = is_object($controller) ? $controller : new $controller();
         $className = $object::class;
         $routes = self::$annotationRoutes[$className] ?? RuntimeCache::get('annotations:' . str_replace('\\', '.', $className));
