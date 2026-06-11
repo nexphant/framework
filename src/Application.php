@@ -6,6 +6,7 @@ use Nexph\Server\Attributes\Route;
 use Nexph\Server\Middleware\Cors;
 use Nexph\Server\Middleware\Security;
 use Nexph\Server\{HttpServer, Router, ServerRequest, ServerResponse, StaticFiles, AsyncIO, ServerTUI, Request as ServerRequestAlias, Response as ServerResponseAlias};
+use Nexph\Console\Console;
 use Nexph\Runtime\{AutoOptimize, CompiledHotPath, OptimizeLoader, Runtime, RuntimeCache};
 use Nexph\Support\Config;
 use Nexph\Database\DB;
@@ -262,6 +263,10 @@ class Application
 
     public function listen(int $port = 8080, string $host = '0.0.0.0'): void
     {
+        if (PHP_SAPI === 'cli' && $this->shouldRunConsole($_SERVER['argv'] ?? [])) {
+            exit((new Console())->run($_SERVER['argv']));
+        }
+
         $this->boot();
         
         $finalConfig = array_merge($this->normalizeConfig($this->initialConfig), $this->runtimeConfig->all());
@@ -624,6 +629,16 @@ class Application
             'sse_replay_limit' => 1024,
             'debug' => false,
         ], $config);
+    }
+
+    private function shouldRunConsole(array $argv): bool
+    {
+        $command = $argv[1] ?? null;
+        if (!is_string($command) || $command === '') {
+            return false;
+        }
+
+        return (new \Nexph\Console\CommandRegistry())->get($command) !== null;
     }
 
     private function detectCpuCount(): int
