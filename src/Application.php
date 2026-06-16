@@ -1,15 +1,15 @@
 <?php
 
-namespace nexphant;
+namespace Nexphant;
 
-use nexphant\Server\Attributes\Route;
-use nexphant\Server\Middleware\Cors;
-use nexphant\Server\Middleware\Security;
-use nexphant\Server\{HttpServer, Router, ServerRequest, ServerResponse, StaticFiles, AsyncIO, ServerTUI, Request as ServerRequestAlias, Response as ServerResponseAlias};
-use nexphant\Console\Console;
-use nexphant\Runtime\{AutoOptimize, CompiledHotPath, OptimizeLoader, Runtime, RuntimeCache};
-use nexphant\Support\Config;
-use nexphant\Database\DB;
+use Nexphant\Server\Attributes\Route;
+use Nexphant\Server\Middleware\Cors;
+use Nexphant\Server\Middleware\Security;
+use Nexphant\Server\{HttpServer, Router, ServerRequest, ServerResponse, StaticFiles, AsyncIO, ServerTUI, Request as ServerRequestAlias, Response as ServerResponseAlias};
+use Nexphant\Console\Console;
+use Nexphant\Runtime\{AutoOptimize, CompiledHotPath, OptimizeLoader, Runtime, RuntimeCache};
+use Nexphant\Support\Config;
+use Nexphant\Database\DB;
 
 class Application
 {
@@ -26,20 +26,20 @@ class Application
     private bool $supervisor = false;
     private bool $autoWorkers = true;
     private static array $annotationRoutes = [];
-    private \nexphant\Runtime\Config\RuntimeConfig $runtimeConfig;
+    private \Nexphant\Runtime\Config\RuntimeConfig $runtimeConfig;
     private array $initialConfig = [];
 
     public function __construct(array $config = [], ?Router $router = null, ?HttpServer $server = null)
     {
-        \nexphant\Support\RuntimeConfig::apply($config);
+        \Nexphant\Support\RuntimeConfig::apply($config);
         $this->basePath = $config['base_path'] ?? getcwd();
-        if (!defined('nexphant_BASE_PATH')) {
-            define('nexphant_BASE_PATH', $this->basePath);
+        if (!defined('NEXPHANT_BASE_PATH')) {
+            define('NEXPHANT_BASE_PATH', $this->basePath);
         }
-        if (!defined('nexphant_VIEW_PATH') && isset($config['view_path'])) {
-            define('nexphant_VIEW_PATH', $config['view_path']);
+        if (!defined('NEXPHANT_VIEW_PATH') && isset($config['view_path'])) {
+            define('NEXPHANT_VIEW_PATH', $config['view_path']);
         }
-        $this->runtimeConfig = \nexphant\Runtime\Config\RuntimeConfigResolver::resolve($config);
+        $this->runtimeConfig = \Nexphant\Runtime\Config\RuntimeConfigResolver::resolve($config);
         $this->router = $router ?? new Router();
         $this->server = $server;
         $this->initialConfig = $config;
@@ -65,37 +65,37 @@ class Application
         return self::$instance ??= new self();
     }
 
-    public function get(string $path, callable $handler, callable ...$middleware): \nexphant\Server\Route
+    public function get(string $path, callable $handler, callable ...$middleware): \Nexphant\Server\Route
     {
         return $this->add('GET', $path, $handler, $middleware);
     }
 
-    public function post(string $path, callable $handler, callable ...$middleware): \nexphant\Server\Route
+    public function post(string $path, callable $handler, callable ...$middleware): \Nexphant\Server\Route
     {
         return $this->add('POST', $path, $handler, $middleware);
     }
 
-    public function put(string $path, callable $handler, callable ...$middleware): \nexphant\Server\Route
+    public function put(string $path, callable $handler, callable ...$middleware): \Nexphant\Server\Route
     {
         return $this->add('PUT', $path, $handler, $middleware);
     }
 
-    public function patch(string $path, callable $handler, callable ...$middleware): \nexphant\Server\Route
+    public function patch(string $path, callable $handler, callable ...$middleware): \Nexphant\Server\Route
     {
         return $this->add('PATCH', $path, $handler, $middleware);
     }
 
-    public function delete(string $path, callable $handler, callable ...$middleware): \nexphant\Server\Route
+    public function delete(string $path, callable $handler, callable ...$middleware): \Nexphant\Server\Route
     {
         return $this->add('DELETE', $path, $handler, $middleware);
     }
 
-    public function options(string $path, callable $handler, callable ...$middleware): \nexphant\Server\Route
+    public function options(string $path, callable $handler, callable ...$middleware): \Nexphant\Server\Route
     {
         return $this->add('OPTIONS', $path, $handler, $middleware);
     }
 
-    public function any(string $path, callable $handler, callable ...$middleware): \nexphant\Server\Route
+    public function any(string $path, callable $handler, callable ...$middleware): \Nexphant\Server\Route
     {
         $last = null;
         foreach (['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] as $method) {
@@ -402,7 +402,7 @@ class Application
                 return;
             }
             if ($pid === 0) {
-                \nexphant\Database\DB::reconnect();
+                \Nexphant\Database\DB::reconnect();
                 $this->getServer()->setWorkerInfo($workerId, $workers);
                 $this->getServer()->start();
                 exit(0);
@@ -485,7 +485,7 @@ class Application
         @unlink($this->basePath . '/storage/runtime.json');
     }
 
-    private function add(string $method, string $path, callable $handler, array $middleware = []): \nexphant\Server\Route
+    private function add(string $method, string $path, callable $handler, array $middleware = []): \Nexphant\Server\Route
     {
         $fullPath = $this->joinPath($this->prefix, $path);
 
@@ -526,11 +526,11 @@ class Application
                 if ($result instanceof \Generator) {
                     return $result;
                 }
-                if ($result instanceof \nexphant\View\ViewResponse) {
+                if ($result instanceof \Nexphant\View\ViewResponse) {
                     $srvResp->html($result->render());
                     return;
                 }
-                if ($result instanceof \nexphant\Server\RawResponse) {
+                if ($result instanceof \Nexphant\Server\RawResponse) {
                     $srvResp->rawHttp($result->http);
                     return;
                 }
@@ -600,27 +600,27 @@ class Application
     private function databaseMetricsText(): string
     {
         $db = $this->databaseStats();
-        return '# HELP nexphant_database_queries_total Total database queries.' . "\n"
-            . '# TYPE nexphant_database_queries_total counter' . "\n"
-            . 'nexphant_database_queries_total ' . (int) ($db['queries'] ?? 0) . "\n"
-            . '# HELP nexphant_database_errors_total Total database errors.' . "\n"
-            . '# TYPE nexphant_database_errors_total counter' . "\n"
-            . 'nexphant_database_errors_total ' . (int) ($db['errors'] ?? 0) . "\n"
-            . '# HELP nexphant_database_query_avg_ms Average database query duration.' . "\n"
-            . '# TYPE nexphant_database_query_avg_ms gauge' . "\n"
-            . 'nexphant_database_query_avg_ms ' . sprintf('%.6F', (float) ($db['avg_ms'] ?? 0)) . "\n"
-            . '# HELP nexphant_database_query_max_ms Max database query duration.' . "\n"
-            . '# TYPE nexphant_database_query_max_ms gauge' . "\n"
-            . 'nexphant_database_query_max_ms ' . sprintf('%.6F', (float) ($db['max_ms'] ?? 0)) . "\n"
-            . '# HELP nexphant_database_slow_queries_total Slow database queries.' . "\n"
-            . '# TYPE nexphant_database_slow_queries_total counter' . "\n"
-            . 'nexphant_database_slow_queries_total ' . (int) ($db['slow_queries'] ?? 0) . "\n"
-            . '# HELP nexphant_database_statement_hits_total Prepared statement cache hits.' . "\n"
-            . '# TYPE nexphant_database_statement_hits_total counter' . "\n"
-            . 'nexphant_database_statement_hits_total ' . (int) ($db['statement_hits'] ?? 0) . "\n"
-            . '# HELP nexphant_database_statement_misses_total Prepared statement cache misses.' . "\n"
-            . '# TYPE nexphant_database_statement_misses_total counter' . "\n"
-            . 'nexphant_database_statement_misses_total ' . (int) ($db['statement_misses'] ?? 0) . "\n";
+        return '# HELP NEXPHANT_database_queries_total Total database queries.' . "\n"
+            . '# TYPE NEXPHANT_database_queries_total counter' . "\n"
+            . 'NEXPHANT_database_queries_total ' . (int) ($db['queries'] ?? 0) . "\n"
+            . '# HELP NEXPHANT_database_errors_total Total database errors.' . "\n"
+            . '# TYPE NEXPHANT_database_errors_total counter' . "\n"
+            . 'NEXPHANT_database_errors_total ' . (int) ($db['errors'] ?? 0) . "\n"
+            . '# HELP NEXPHANT_database_query_avg_ms Average database query duration.' . "\n"
+            . '# TYPE NEXPHANT_database_query_avg_ms gauge' . "\n"
+            . 'NEXPHANT_database_query_avg_ms ' . sprintf('%.6F', (float) ($db['avg_ms'] ?? 0)) . "\n"
+            . '# HELP NEXPHANT_database_query_max_ms Max database query duration.' . "\n"
+            . '# TYPE NEXPHANT_database_query_max_ms gauge' . "\n"
+            . 'NEXPHANT_database_query_max_ms ' . sprintf('%.6F', (float) ($db['max_ms'] ?? 0)) . "\n"
+            . '# HELP NEXPHANT_database_slow_queries_total Slow database queries.' . "\n"
+            . '# TYPE NEXPHANT_database_slow_queries_total counter' . "\n"
+            . 'NEXPHANT_database_slow_queries_total ' . (int) ($db['slow_queries'] ?? 0) . "\n"
+            . '# HELP NEXPHANT_database_statement_hits_total Prepared statement cache hits.' . "\n"
+            . '# TYPE NEXPHANT_database_statement_hits_total counter' . "\n"
+            . 'NEXPHANT_database_statement_hits_total ' . (int) ($db['statement_hits'] ?? 0) . "\n"
+            . '# HELP NEXPHANT_database_statement_misses_total Prepared statement cache misses.' . "\n"
+            . '# TYPE NEXPHANT_database_statement_misses_total counter' . "\n"
+            . 'NEXPHANT_database_statement_misses_total ' . (int) ($db['statement_misses'] ?? 0) . "\n";
     }
 
     private function normalizeConfig(array $config): array
@@ -687,7 +687,7 @@ class Application
             return false;
         }
 
-        return (new \nexphant\Console\CommandRegistry())->get($command) !== null;
+        return (new \Nexphant\Console\CommandRegistry())->get($command) !== null;
     }
 
     private function detectCpuCount(): int

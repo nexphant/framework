@@ -1,4 +1,4 @@
-# nexphant Framework
+# Nexphant Framework
 
 Meta-package for all nexphant components.
 

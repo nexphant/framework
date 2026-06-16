@@ -1,5 +1,5 @@
 <?php
-namespace nexphant;
+namespace Nexphant;
 
 class App extends Application
 {

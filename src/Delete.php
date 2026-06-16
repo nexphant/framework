@@ -1,7 +1,7 @@
 <?php
-namespace nexphant;
+namespace Nexphant;
 
 #[\Attribute(\Attribute::TARGET_METHOD | \Attribute::IS_REPEATABLE)]
-class Delete extends \nexphant\Server\Attributes\Delete
+class Delete extends \Nexphant\Server\Attributes\Delete
 {
 }
