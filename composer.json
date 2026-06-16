@@ -1,6 +1,6 @@
 {
     "name": "nexphant/framework",
-    "description": "nexphant Framework - Meta-package for all nexphant components",
+    "description": "Nexphant Framework - Meta-package for all nexphant components",
     "type": "library",
     "license": "MIT",
     "autoload": {
