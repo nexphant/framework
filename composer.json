@@ -1,27 +1,27 @@
 {
-    "name": "nexph/framework",
-    "description": "Nexph Framework - Meta-package for all Nexph components",
+    "name": "nexphant/framework",
+    "description": "nexphant Framework - Meta-package for all nexphant components",
     "type": "library",
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Nexph\\": "src/"
+            "nexphant\\": "src/"
         }
     },
     "require": {
         "php": "^8.1",
-        "nexph/core": "^0.0",
-        "nexph/runtime": "^0.0",
-        "nexph/server": "^0.0",
-        "nexph/database": "^0.0",
-        "nexph/queue": "^0.0",
-        "nexph/lifecycle": "^0.0",
-        "nexph/scheduler": "^0.0",
-        "nexph/cache": "^0.0",
-        "nexph/console": "^0.0",
-        "nexph/support": "^0.0",
-        "nexph/observability": "^0.0",
-        "nexph/view": "^0.0"
+        "nexphant/core": "^0.0",
+        "nexphant/runtime": "^0.0",
+        "nexphant/server": "^0.0",
+        "nexphant/database": "^0.0",
+        "nexphant/queue": "^0.0",
+        "nexphant/lifecycle": "^0.0",
+        "nexphant/scheduler": "^0.0",
+        "nexphant/cache": "^0.0",
+        "nexphant/console": "^0.0",
+        "nexphant/support": "^0.0",
+        "nexphant/observability": "^0.0",
+        "nexphant/view": "^0.0"
     },
     "minimum-stability": "dev",
     "prefer-stable": true

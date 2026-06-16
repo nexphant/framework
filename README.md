@@ -1,11 +1,11 @@
-# Nexph Framework
+# nexphant Framework
 
-Meta-package for all Nexph components.
+Meta-package for all nexphant components.
 
 ## Installation
 
 ```bash
-composer require nexph/framework
+composer require nexphant/framework
 ```
 
 ## License

@@ -1,7 +1,7 @@
 <?php
-namespace Nexph;
+namespace nexphant;
 
 #[\Attribute(\Attribute::TARGET_METHOD | \Attribute::IS_REPEATABLE)]
-class Put extends \Nexph\Server\Attributes\Put
+class Put extends \nexphant\Server\Attributes\Put
 {
 }
