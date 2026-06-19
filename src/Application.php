@@ -211,6 +211,9 @@ class Application
         }
 
         self::$annotationRoutes[$className] = $routes;
+        if (count(self::$annotationRoutes) > 500) {
+            self::$annotationRoutes = array_slice(self::$annotationRoutes, -250, null, true);
+        }
         RuntimeCache::set('annotations:' . str_replace('\\', '.', $className), $routes, 0);
         foreach ($routes as $route) {
             $this->add($route['method'], $route['path'], [$object, $route['handler']], $route['middleware']);
