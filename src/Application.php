@@ -524,11 +524,16 @@ class Application
     {
         $fullPath = $this->joinPath($this->prefix, $path);
 
+        $resolved = array_map(
+            fn($m) => is_string($m) ? \Nexphant\Server\MiddlewareAlias::resolve($m) : $m,
+            array_merge($this->routeMiddleware, $middleware)
+        );
+
         return $this->router->add(
             $method,
             $fullPath,
             $this->wrap($handler),
-            array_merge($this->routeMiddleware, $middleware)
+            $resolved
         );
     }
 
