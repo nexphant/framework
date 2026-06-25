@@ -449,7 +449,7 @@ class Application
 
             if ($stopping && $deadline > 0 && microtime(true) >= $deadline) {
                 foreach (array_keys($children) as $pid) {
-                    @posix_kill($pid, SIGTERM);
+                    @posix_kill($pid, SIGKILL);
                 }
                 $deadline = 0.0;
             }
