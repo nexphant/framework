@@ -178,6 +178,24 @@ class Application
             return $this;
         }
 
+        $this->registerAnnotationController($controller);
+        return $this;
+    }
+
+    public function annotationsFrom(array $directories): self
+    {
+        $discovery = new \Nexphant\Foundation\AnnotationDiscovery();
+        $classes = $discovery->scanDirectories($directories);
+
+        foreach ($classes as $class) {
+            $this->registerAnnotationController($class);
+        }
+
+        return $this;
+    }
+
+    private function registerAnnotationController(string|object $controller): void
+    {
         $object = is_object($controller) ? $controller : new $controller();
         $className = $object::class;
         $routes = self::$annotationRoutes[$className] ?? RuntimeCache::get('annotations:' . str_replace('\\', '.', $className));
@@ -187,7 +205,7 @@ class Application
             foreach ($routes as $route) {
                 $this->add($route['method'], $route['path'], [$object, $route['handler']], $route['middleware']);
             }
-            return $this;
+            return;
         }
 
         $class = new \ReflectionClass($object);
@@ -218,8 +236,6 @@ class Application
         foreach ($routes as $route) {
             $this->add($route['method'], $route['path'], [$object, $route['handler']], $route['middleware']);
         }
-
-        return $this;
     }
 
     public function workers(int $count): self
@@ -228,6 +244,22 @@ class Application
         $this->autoWorkers = false;
         $this->supervisor = $this->workers > 1;
         $this->runtimeConfig->set('workers', $this->workers);
+        return $this;
+    }
+
+    /**
+     * Register middleware aliases.
+     *
+     * $app->middlewareAlias([
+     *     'auth'  => AuthMiddleware::class,
+     *     'guest' => GuestMiddleware::class,
+     * ]);
+     */
+    public function middlewareAlias(array $aliases): self
+    {
+        foreach ($aliases as $alias => $class) {
+            \Nexphant\Server\MiddlewareAlias::register((string)$alias, $class);
+        }
         return $this;
     }
 
